@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:ethio_shop/firebase_core.dart';
+
+import 'package:ethio_shop/providers/auth_provider.dart';
+import 'package:ethio_shop/providers/cart_provider.dart';
+import 'package:ethio_shop/providers/language_provider.dart';
+import 'package:ethio_shop/providers/theme_provider.dart';
+import 'package:ethio_shop/providers/location_provider.dart';
+import 'package:ethio_shop/routes/app_routes.dart';
+import 'package:ethio_shop/services/notification_service.dart';
+import 'package:ethio_shop/theme/app_theme.dart';
+import 'package:ethio_shop/utils/ethiopian_utils.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    // Initialize Firebase
+    await Firebase.initializeApp();
+    print('✅ Firebase initialized successfully');
+    
+    // Initialize Ethiopian utilities
+    await EthiopianUtils.initialize();
+    
+    // Initialize notification service
+    await NotificationService.initialize();
+    
+    // Initialize language provider
+    await LanguageProvider.initialize();
+    
+  } catch (e) {
+    print('❌ Error initializing app: $e');
+  }
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+      ],
+      child: const EthioShopApp(),
+    ),
+  );
+}
+
+class EthioShopApp extends StatelessWidget {
+  const EthioShopApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, child) {
+        return MaterialApp(
+          title: 'Ethio Shop',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          locale: languageProvider.locale,
+          supportedLocales: const [
+            Locale('am', 'ET'), // Amharic
+            Locale('en', 'US'), // English
+            Locale('om', 'ET'), // Oromo
+            Locale('ti', 'ET'), // Tigrinya
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          initialRoute: AppRoutes.splash,
+          onGenerateRoute: AppRoutes.generateRoute,
+          navigatorKey: NavigationService.navigatorKey,
+        );
+      },
+    );
+  }
+}
+
+class NavigationService {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  
+  static Future<dynamic> navigateTo(String routeName, {Object? arguments}) {
+    return navigatorKey.currentState!.pushNamed(routeName, arguments: arguments);
+  }
+  
+  static void goBack() {
+    navigatorKey.currentState!.pop();
+  }
+  
+  static Future<dynamic> replaceWith(String routeName, {Object? arguments}) {
+    return navigatorKey.currentState!.pushReplacementNamed(routeName, arguments: arguments);
+  }
+}
